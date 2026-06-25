@@ -72,6 +72,20 @@
         @media (max-width: 720px) { .quiz-container { padding: var(--space-8) var(--space-6); } .question-text { font-size: 1.3em; } .option-item { padding: var(--space-4); } }
         @media (max-width: 520px) { body { align-items: flex-start; } .quiz-container { margin: var(--space-6); padding: var(--space-7) var(--space-5); } .progress-container { flex-direction: column; align-items: flex-start; gap: var(--space-3); } .navigation { flex-direction: column; align-items: stretch; gap: var(--space-4); } .nav-buttons { width: 100%; } .btn { width: 100%; } .hint-toggle { justify-content: space-between; } .results-actions { flex-direction: column; } }
     </style>
+
+    <!-- 新增：引入 MathJax 3 以支援 LaTeX / 化學式渲染 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
     <div class="quiz-container">
@@ -139,9 +153,9 @@
                 const revealClass = revealCorrect ? 'revealed-correct' : '';
                 optionsHtml += `
                     <li class="option-item ${selectedClass} ${statusClass} ${revealClass}" onclick="selectOption(${idx})">
-                        <div class="option-label"><span>${String.fromCharCode(65 + idx)}. ${opt.text}</span></div>
+                        <div class="option-label"><span>${String.fromCharCode(65 + idx)}. ${escapeHtml(opt.text)}</span></div>
                         <div class="feedback-state">${opt.isCorrect ? '✓ Right answer' : '✕ Not quite'}</div>
-                        ${opt.rationale ? '<div class="rationale">' + opt.rationale + '</div>' : ''}
+                        ${opt.rationale ? '<div class="rationale">' + escapeHtml(opt.rationale) + '</div>' : ''}
                     </li>
 `;
             });
@@ -168,8 +182,16 @@
             if (mode === 'review') { nextBtn.innerText = currentIndex === quizData.length - 1 ? 'Back to Results' : 'Next'; }
             else { nextBtn.innerText = currentIndex === quizData.length - 1 ? 'Finish' : 'Next'; }
             document.getElementById('hint-icon-arrow').innerText = s.hintVisible ? '▲' : '▼';
+
+            // 新增：觸發 MathJax 重新渲染題目與選項
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise().catch(function (err) { console.log(err.message); });
+            }
         }
-        function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+        function escapeHtml(text) { 
+            if (typeof text !== 'string') return text;
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
+        }
         function selectOption(idx) { if (mode !== 'quiz' || state[currentIndex].selectedIndex !== null) return; state[currentIndex].selectedIndex = idx; renderQuestion(); }
         function toggleHint() { if (mode === 'results') return; state[currentIndex].hintVisible = !state[currentIndex].hintVisible; renderQuestion(); }
         
@@ -190,6 +212,11 @@
             content.classList.add('hidden'); results.classList.remove('hidden'); hintBox.classList.add('hidden'); nav.classList.add('hidden');
             document.getElementById('review-btn').onclick = () => { mode = 'review'; currentIndex = 0; renderQuestion(); };
             document.getElementById('retake-btn').onclick = () => { mode = 'quiz'; currentIndex = 0; shuffleQuestions(); shuffleAnswers(); resetState(); renderQuestion(); };
+            
+            // 新增：觸發 MathJax 重新渲染結果頁面
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise().catch(function (err) { console.log(err.message); });
+            }
         }
         
         document.getElementById('prev-btn').onclick = () => { if (currentIndex > 0) { currentIndex--; renderQuestion(); } };
